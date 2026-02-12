@@ -24,21 +24,6 @@ JPEG binário ou WebSocket (ESP32 → Python)
 Banco de Dados
 MySQL ou Firebase
 
-Envio do Vetor (Python → API) [Apenas Demonstração]
-{
-  "idDispositivo": "ESP32-01",
-  "timestamp": "2026-02-11T14:32:00Z",
-  "vetorFacial": [0.1234, -0.3345, 0.9987, ...],
-  "dimensao": 128
-}
-
-Resposta da API [Apenas Demonstração]
-{
-  "match": true,
-  "pessoaIdentificada": "Lucas Zurano",
-  "confidence": 0.94,
-  "horarioRegistro": "2026-02-11T14:32:01Z"
-}
 
 | Etapa          | Formato                    |
 | -------------- | -------------------------- |
