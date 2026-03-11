@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FaceGate Dashboard</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f1117;
+      color: #e0e0e0;
+      padding: 24px;
+    }
+
+    h1 {
+      font-size: 1.6rem;
+      margin-bottom: 6px;
+      color: #ffffff;
+    }
+
+    .subtitle {
+      font-size: 0.85rem;
+      color: #666;
+      margin-bottom: 24px;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .card {
+      background: #1a1d27;
+      border-radius: 12px;
+      padding: 20px;
+      border: 1px solid #2a2d3a;
+    }
+
+    .card .label {
+      font-size: 0.75rem;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+    }
+
+    .card .value {
+      font-size: 1.8rem;
+      font-weight: bold;
+      color: #ffffff;
+    }
+
+    .card .value.alert { color: #ff4d4d; }
+    .card .value.ok    { color: #4dff91; }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 99px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      margin-top: 8px;
+    }
+
+    .badge.movimento  { background: #ff4d4d22; color: #ff4d4d; border: 1px solid #ff4d4d55; }
+    .badge.parado     { background: #4dff9122; color: #4dff91; border: 1px solid #4dff9155; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #1a1d27;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid #2a2d3a;
+    }
+
+    thead {
+      background: #22263a;
+    }
+
+    th, td {
+      padding: 12px 16px;
+      text-align: left;
+      font-size: 0.875rem;
+      border-bottom: 1px solid #2a2d3a;
+    }
+
+    th { color: #888; font-weight: 600; text-transform: uppercase; font-size: 0.75rem; }
+    td { color: #ddd; }
+
+    tr:last-child td { border-bottom: none; }
+
+    tr.new-row {
+      animation: highlight 1.5s ease-out;
+    }
+
+    @keyframes highlight {
+      from { background: #ffffff18; }
+      to   { background: transparent; }
+    }
+
+    .dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 6px;
+    }
+
+    .dot.green { background: #4dff91; box-shadow: 0 0 6px #4dff91; }
+    .dot.red   { background: #ff4d4d; box-shadow: 0 0 6px #ff4d4d; }
+
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 20px;
+      font-size: 0.85rem;
+      color: #888;
+    }
+
+    #lastUpdate { color: #555; font-size: 0.8rem; }
+
+    .empty {
+      text-align: center;
+      padding: 40px;
+      color: #555;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🚪 FaceGate Dashboard</h1>
+  <p class="subtitle">Monitoramento em tempo real — ESP32 + VL53L0X + PIR</p>
+
+  <div class="status-bar">
+    <span class="dot green" id="statusDot"></span>
+    <span id="statusText">Conectado — aguardando dados</span>
+    <span id="lastUpdate"></span>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <div class="label">Total recebido</div>
+      <div class="value" id="totalCount">0</div>
+    </div>
+    <div class="card">
+      <div class="label">Última distância</div>
+      <div class="value" id="lastDist">—</div>
+    </div>
+    <div class="card">
+      <div class="label">Último status</div>
+      <div class="value" id="lastMovimento">—</div>
+      <span class="badge parado" id="movimentoBadge">Aguardando</span>
+    </div>
+    <div class="card">
+      <div class="label">Dispositivo</div>
+      <div class="value" style="font-size:1rem" id="lastDevice">—</div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Device ID</th>
+        <th>Distância (mm)</th>
+        <th>Movimento</th>
+        <th>Recebido em</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody">
+      <tr><td colspan="5" class="empty">Nenhum dado recebido ainda...</td></tr>
+    </tbody>
+  </table>
+
+  <script>
+    let previousCount = 0;
+
+    async function fetchReadings() {
+      try {
+        const res = await fetch('/readings');
+        const data = await res.json();
+
+        const tbody = document.getElementById('tableBody');
+        const totalCount = document.getElementById('totalCount');
+        const lastDist = document.getElementById('lastDist');
+        const lastMovimento = document.getElementById('lastMovimento');
+        const movimentoBadge = document.getElementById('movimentoBadge');
+        const lastDevice = document.getElementById('lastDevice');
+        const lastUpdate = document.getElementById('lastUpdate');
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+
+        // Status online
+        statusDot.className = 'dot green';
+        statusText.textContent = 'Conectado — atualizando a cada 3s';
+        lastUpdate.textContent = 'Última atualização: ' + new Date().toLocaleTimeString('pt-BR');
+
+        totalCount.textContent = data.length;
+
+        if (data.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" class="empty">Nenhum dado recebido ainda...</td></tr>';
+          return;
+        }
+
+        // Atualiza cards com o mais recente
+        const latest = data[0];
+        const distVal = latest.distancia ?? '—';
+        lastDist.textContent = distVal !== '—' ? distVal + ' mm' : '—';
+        lastDist.className = 'value ' + (distVal < 300 ? 'alert' : 'ok');
+        lastMovimento.textContent = latest.movimento ? 'Movimento' : 'Parado';
+        movimentoBadge.textContent = latest.movimento ? '🔴 Em movimento' : '🟢 Sem movimento';
+        movimentoBadge.className = 'badge ' + (latest.movimento ? 'movimento' : 'parado');
+        lastDevice.textContent = latest.device_id ?? '—';
+
+        // Monta tabela
+        tbody.innerHTML = data.map((item, i) => {
+          const isNew = i === 0 && data.length > previousCount;
+          const date = new Date(item.created_at).toLocaleString('pt-BR');
+          const distClass = item.distancia < 300 ? 'style="color:#ff4d4d"' : '';
+          return `
+            <tr class="${isNew ? 'new-row' : ''}">
+              <td>${data.length - i}</td>
+              <td>${item.device_id}</td>
+              <td ${distClass}>${item.distancia ?? '—'} mm</td>
+              <td>
+                <span class="dot ${item.movimento ? 'red' : 'green'}"></span>
+                ${item.movimento ? 'Sim' : 'Não'}
+              </td>
+              <td>${date}</td>
+            </tr>`;
+        }).join('');
+
+        previousCount = data.length;
+
+      } catch (err) {
+        document.getElementById('statusDot').className = 'dot red';
+        document.getElementById('statusText').textContent = 'Erro ao conectar na API';
+      }
+    }
+
+    fetchReadings();
+    setInterval(fetchReadings, 3000); // atualiza a cada 3 segundos
+  </script>
+
+</body>
+</html>
