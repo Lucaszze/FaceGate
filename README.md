@@ -7,7 +7,7 @@ A proposta é eliminar o registro manual de ponto, permitindo que o colaborador 
 Ferramentas Utilizadas
 
 Hardware
-ESP32-CAM
+Raspberry3
 Câmera
 
 Processamento
@@ -27,7 +27,7 @@ MySQL ou Firebase
 
 | Etapa          | Formato                    |
 | -------------- | -------------------------- |
-| ESP32 → Python | JPEG binário ou WebSocket  |
+| Raspberry3 → Python | JPEG binário ou WebSocket  |
 | Vetor Facial   | Array de 128 ou 512 floats |
 | Python → API   | JSON                       |
 | API → Banco    | Float array ou Vector Type |
